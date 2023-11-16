@@ -66,8 +66,10 @@ const readDir = (dir) => {
  *
  * @param {string} filePath
  * @param {string} pathProcessed
+ * @param {string} sepia
  * @return {promise}
  */
+
 const grayScale = (pathIn, pathOut) => {
   fs.createReadStream(`./unzipped/${pathIn}`)
   .pipe(
@@ -78,17 +80,40 @@ const grayScale = (pathIn, pathOut) => {
   .on("parsed", function () {
     for (var y = 0; y < this.height; y++) {
       for (var x = 0; x < this.width; x++) {
-        var idx = (this.width * y + x) << 2;
-
+        let idx = (this.width * y + x) << 2;
+        const rgb = (this.data[idx] + this.data[idx + 1] + this.data[idx + 2]) / 3;
         // invert color
-        this.data[idx] = 255 - this.data[idx];
-        this.data[idx + 1] = 255 - this.data[idx + 1];
-        this.data[idx + 2] = 255 - this.data[idx + 2];
+        this.data[idx] = rgb;
+        this.data[idx + 1] = rgb;
+        this.data[idx + 2] = rgb;
       }
     }
+    //console.log(`pathOut : ${pathOut} pathIn : ${pathIn}`)
+    this.pack().pipe(fs.createWriteStream(`${pathOut}/${pathIn}`));
+});
+}
 
+const doSepia = (pathIn, pathOut) => {
+  fs.createReadStream(`./unzipped/${pathIn}`)
+  .pipe(new PNG())
+  .on('parsed', function () {
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const index = (this.width * y + x) << 2;
+      
+        const red = this.data[index];
+        const green = this.data[index + 1];
+        const blue = this.data[index + 2];
+
+        this.data[index] = Math.min(255, 0.393 * red + 0.769 * green + 0.189 * blue);
+        this.data[index + 1] = Math.min(255, 0.349 * red + 0.686 * green + 0.168 * blue); 
+        this.data[index + 2] = Math.min(255, 0.272 * red + 0.534 * green + 0.131 * blue); 
+      }
+    }
+    //console.log(`pathOut : ${pathOut} pathIn : ${pathIn}`)
     this.pack().pipe(fs.createWriteStream(`${pathOut}/${pathIn}`));
   });
+};
   // console.log(`pathIn(f) : ${pathIn}, pathOut : ${pathOut}`);
   // fs.createReadStream(`./unzipped/${pathIn}`)
   // .pipe(new PNG())
@@ -105,12 +130,11 @@ const grayScale = (pathIn, pathOut) => {
   //   }
   //   this.pack().pipe(fs.createWriteStream(`${pathOut}/${pathIn}`));
   // });
-  
 
-};
 
 module.exports = {
   unzip,
   readDir,
   grayScale,
+  doSepia,
 };
